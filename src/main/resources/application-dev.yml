@@ -1,0 +1,8 @@
+# DATABASE
+DB_URL: jdbc:postgresql://localhost:5432/crypto_market_ai_chatbot
+DB_USERNAME: postgres
+DB_PASSWORD: 332003
+DB_DRIVER: org.postgresql.Driver
+
+#GEMINI API
+GEMINI_API_KEY: AIzaSyCunpDIYPaZk-DJ9K5B4qR86ugnkAprbiQ
