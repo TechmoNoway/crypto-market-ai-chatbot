@@ -1,7 +1,5 @@
 package com.trikynguci.cryptomarketaichatbot.service.Impl;
 
-import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.ReadContext;
 import com.trikynguci.cryptomarketaichatbot.dto.CoinDto;
 import com.trikynguci.cryptomarketaichatbot.response.ApiResponse;
 import com.trikynguci.cryptomarketaichatbot.response.FunctionResponse;
@@ -78,9 +76,97 @@ public class ChatbotServiceImpl implements ChatbotService {
 
     @Override
     public ApiResponse getCoinDetails(String prompt) throws Exception {
-        CoinDto coinDto = makeApiRequest(prompt);
-        getFunctionResponse(prompt);
-        System.out.println("coin dto ------" + coinDto);
+        CoinDto apiResponse = makeApiRequest(prompt);
+        FunctionResponse res = getFunctionResponse(prompt);
+        String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + GEMINI_API_KEY;
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        System.out.println(res.getCurrencyName());
+        System.out.println(res.getCurrencyData());
+
+        String body = new JSONObject()
+                .put("contents", new JSONArray()
+                        .put(new JSONObject()
+                                .put("role",  "user")
+                                .put("parts", new JSONArray()
+                                        .put(new JSONObject()
+                                                .put("text", prompt)
+                                        )
+                                )
+                        )
+                        .put(new JSONObject()
+                                .put("role", "model")
+                                .put("parts", new JSONArray()
+                                        .put(new JSONObject()
+                                                .put("functionCall", new JSONObject()
+                                                        .put("name", "getCoinDetails")
+                                                        .put("args", new JSONObject()
+                                                                .put("currencyName", res.getCurrencyName())
+                                                                .put("currencyData", res.getCurrencyData())
+                                                                .put("currencyID", res.getCurrencyID())
+                                                        )
+                                                )
+                                        )
+                                )
+                        )
+                        .put(new JSONObject()
+                                .put("role", "function")
+                                .put("parts", new JSONArray()
+                                        .put(new JSONObject()
+                                                .put("functionResponse", new JSONObject()
+                                                        .put("name", "getCoinDetails")
+                                                        .put("response", new JSONObject()
+                                                                .put("name", "getCoinDetails")
+                                                                .put("content", apiResponse)
+                                                        )
+                                                )
+                                        )
+                                )
+                        )
+                )
+                .put("tools", new JSONArray()
+                        .put(new JSONObject()
+                                .put("functionDeclarations", new JSONArray()
+                                        .put(new JSONObject()
+                                                .put("name", "getCoinDetails")
+                                                .put("description", "Get crypto currency data from given currency object.")
+                                                .put("parameters", new JSONObject()
+                                                        .put("type", "OBJECT")
+                                                        .put("properties", new JSONObject()
+                                                                .put("currencyName", new JSONObject()
+                                                                        .put("type", "STRING")
+                                                                        .put("description", "The currency name, id, or symbol.")
+                                                                )
+                                                                .put("currencyData", new JSONObject()
+                                                                        .put("type", "STRING")
+                                                                        .put("description", "The currency data id, symbol, current price, image, market cap extra...")
+                                                                )
+                                                                .put("currencyID", new JSONObject()
+                                                                        .put("type", "STRING")
+                                                                        .put("description", "The currency id.")
+                                                                )
+                                                        )
+                                                        .put("required", new JSONArray()
+                                                                .put("currencyName")
+                                                                .put("currencyData")
+                                                                .put("currencyID")
+                                                        )
+                                                )
+                                        )
+                                )
+                        )
+                )
+                .toString();
+
+        HttpEntity<String> requestEntity = new HttpEntity<>(body, headers);
+        RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<String> response = restTemplate.postForEntity(GEMINI_API_URL, requestEntity, String.class);
+
+        String responseBody = response.getBody();
+
+        System.out.println("responseBody: " + responseBody);
+
         return null;
     }
 
@@ -102,23 +188,19 @@ public class ChatbotServiceImpl implements ChatbotService {
                                 .put("functionDeclarations", new JSONArray()
                                         .put(new JSONObject()
                                                 .put("name", "getCoinDetails")
-                                                .put("description", "Get the coin details from given currency object")
+                                                .put("description", "Get cryptocurrency data for a given currency.")
                                                 .put("parameters", new JSONObject()
                                                         .put("type", "OBJECT")
                                                         .put("properties", new JSONObject()
                                                                 .put("currencyName", new JSONObject()
                                                                         .put("type", "STRING")
-                                                                        .put(
-                                                                                "description",
-                                                                                "The currency name, " +
-                                                                                        "id, symbol."
-                                                                        )
+                                                                        .put("description", "The currency name, id, or symbol.")
                                                                 )
                                                                 .put("currencyData", new JSONObject()
                                                                         .put("type", "STRING")
                                                                         .put(
                                                                                 "description",
-                                                                                "Currency Data id, " +
+                                                                                "Currency id, " +
                                                                                         "symbol, " +
                                                                                         "name, " +
                                                                                         "image, " +
@@ -141,39 +223,67 @@ public class ChatbotServiceImpl implements ChatbotService {
                                                                                         "atl_change_percentage, " +
                                                                                         "atl_date, last_updated.")
                                                                 )
+                                                                .put("currencyID", new JSONObject()
+                                                                        .put("type", "STRING")
+                                                                        .put("description", "The currency id.")
+                                                                )
                                                         )
                                                         .put("required", new JSONArray()
                                                                 .put("currencyName")
                                                                 .put("currencyData")
+                                                                .put("currencyID")
                                                         )
                                                 )
                                         )
                                 )
                         )
-                );
+                )
+                .put("toolConfig", new JSONObject()
+                        .put("functionCallingConfig", new JSONObject()
+                                .put("mode", "ANY")
+                                .put("allowedFunctionNames", new JSONArray()
+                                        .put("getCoinDetails")
+                                )
+                        )
+                )
+                ;
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         HttpEntity<String> requestEntity = new HttpEntity<>(requestBodyJson.toString(), headers);
-
         RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<String> response = restTemplate.postForEntity(GEMINI_API_URL, requestEntity, String.class);
 
+        ResponseEntity<String> response = restTemplate.postForEntity(GEMINI_API_URL, requestEntity, String.class);
         String responseBody = response.getBody();
 
-        ReadContext ctx = JsonPath.parse(responseBody);
+        JSONObject jsonObject = new JSONObject(responseBody);
 
-        String currencyName = ctx.read("$.candidates[0].content.parts[0].functionCall.args.currencyName");
-        String currencyData = ctx.read("$.candidates[0].content.parts[0].functionCall.args.currencyData");
-        String name = ctx.read("$.candidates[0].content.parts[0].functionCall.name");
+        JSONArray candidates = jsonObject.getJSONArray("candidates");
+        JSONObject firstCandidate = candidates.getJSONObject(0);
+
+        JSONObject content = firstCandidate.getJSONObject("content");
+        JSONArray parts = content.getJSONArray("parts");
+        JSONObject firstPart = parts.getJSONObject(0);
+        JSONObject functionCall = firstPart.getJSONObject("functionCall");
+
+        String functionName = functionCall.getString("name");
+        JSONObject args = functionCall.getJSONObject("args");
+        String currencyName = args.getString("currencyName");
+        String currencyData = args.getString("currencyData");
+        String currencyID = args.getString("currencyID");
+
+        System.out.println("functionName: " + functionName);
+        System.out.println("currencyName: " + currencyName);
+        System.out.println("currencyData: " + currencyData);
+
+        System.out.println("responseBody: " + responseBody);
 
         FunctionResponse res = new FunctionResponse();
+        res.setFunctionName(functionName);
         res.setCurrencyName(currencyName);
         res.setCurrencyData(currencyData);
-        res.setFunctionName(name);
-
-        System.out.println(name + "-------" + currencyName + "------" + currencyData);
+        res.setCurrencyID(currencyID);
 
         return res;
     }
@@ -196,7 +306,6 @@ public class ChatbotServiceImpl implements ChatbotService {
                 ).toString();
 
         HttpEntity<String> requestEntity = new HttpEntity<>(requestBody, headers);
-
         RestTemplate restTemplate = new RestTemplate();
         ResponseEntity<String> response = restTemplate.postForEntity(GEMINI_API_URL, requestEntity, String.class);
 

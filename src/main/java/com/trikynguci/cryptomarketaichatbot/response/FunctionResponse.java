@@ -8,5 +8,6 @@ public class FunctionResponse {
     private String currencyName;
     private String functionName;
     private String currencyData;
+    private String currencyID;
 
 }
