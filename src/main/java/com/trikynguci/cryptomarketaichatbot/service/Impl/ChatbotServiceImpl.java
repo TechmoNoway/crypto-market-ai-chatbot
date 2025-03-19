@@ -35,7 +35,7 @@ public class ChatbotServiceImpl implements ChatbotService {
     }
 
     public CoinDto makeApiRequest(String currencyName) throws Exception {
-        String url = "https://api.coingecko.com/api/v3/coins/bitcoin";
+        String url = "https://api.coingecko.com/api/v3/coins/" + currencyName;
 
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
@@ -76,8 +76,8 @@ public class ChatbotServiceImpl implements ChatbotService {
 
     @Override
     public ApiResponse getCoinDetails(String prompt) throws Exception {
-        CoinDto apiResponse = makeApiRequest(prompt);
         FunctionResponse res = getFunctionResponse(prompt);
+        CoinDto apiResponse = makeApiRequest(res.getCurrencyName());
         String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + GEMINI_API_KEY;
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -167,7 +167,20 @@ public class ChatbotServiceImpl implements ChatbotService {
 
         System.out.println("responseBody: " + responseBody);
 
-        return null;
+        JSONObject jsonObject = new JSONObject(responseBody);
+
+        JSONArray candidates = jsonObject.getJSONArray("candidates");
+        JSONObject firstCandidate = candidates.getJSONObject(0);
+
+        JSONObject content = firstCandidate.getJSONObject("content");
+        JSONArray parts = content.getJSONArray("parts");
+        JSONObject firstPart = parts.getJSONObject(0);
+        String text = firstPart.getString("text");
+
+        ApiResponse answer = new ApiResponse();
+        answer.setMessage(text);
+
+        return answer;
     }
 
     public FunctionResponse getFunctionResponse(String prompt) {
