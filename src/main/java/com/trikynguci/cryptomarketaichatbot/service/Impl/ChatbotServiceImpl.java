@@ -35,7 +35,8 @@ public class ChatbotServiceImpl implements ChatbotService {
     }
 
     public CoinDto makeApiRequest(String currencyName) throws Exception {
-        String url = "https://api.coingecko.com/api/v3/coins/" + currencyName;
+        String newCurrencyName = currencyName.toLowerCase();
+        String url = "https://api.coingecko.com/api/v3/coins/" + newCurrencyName;
 
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
